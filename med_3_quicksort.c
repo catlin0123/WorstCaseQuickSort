@@ -12,7 +12,7 @@
 #include <stdlib.h>
 using namespace std;
 
-const int  MAX_N =  1000000;
+const int  MAX_N =  100000;
 
 ////////////////////////////////////////////////////////////////////
 
