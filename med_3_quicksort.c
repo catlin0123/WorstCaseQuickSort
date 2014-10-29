@@ -12,7 +12,10 @@
 #include <stdlib.h>
 using namespace std;
 
-const int  MAX_N =  100000;
+const int  MAX_N =  500000;
+int global_n; // Didn't want to mess up functions when debugging, 
+              // so I added this to use as the list size
+bool PRINTING = false; // Print debugging statements if true.
 
 ////////////////////////////////////////////////////////////////////
 
@@ -31,8 +34,9 @@ void gen_rand_list(long a[], int n)
   x = 0;
   for (i = 0; i < n; i++)
     {
-    x += random() % 100;
-    a[i] = x;
+    //x += random() % 100;
+    //a[i] = x;
+      a[i] = i;
     }
 
   }
@@ -161,6 +165,8 @@ void quick_sort_median_3(long a[], int left, int right)
     while (i <= j);
 
     swap(a[left], a[j]);
+    if( PRINTING )
+      print_list(a, global_n);
     quick_sort_median_3(a, left, j - 1);
     quick_sort_median_3(a, j + 1, right);
     }  // end if
@@ -198,6 +204,8 @@ void quick_sort_left(long a[], int left, int right)
     while (i <= j);
 
     swap(a[left], a[j]);
+    if( PRINTING )
+      print_list(a, global_n);
     quick_sort_left(a, left, j - 1);
     quick_sort_left(a, j + 1, right);
     }  // end if
@@ -205,6 +213,72 @@ void quick_sort_left(long a[], int left, int right)
   } // quick sort
 
 ////////////////////////////////////////////////////////////////////
+
+///////////////////////// CAITLIN AND DAN CODE /////////////////////////
+//scrambles a list into the worst case for a median of three where the pivot 
+//is swapped to the left. 
+//n is size of list
+//sorted is a sorted list of length n
+//scrambled will store the worst case for a median of three
+////integer power function
+int pow (int base, int power)
+{
+  if (power == 0)
+  {
+    return 1; 
+  }
+  if (power % 2 == 1)
+  {
+    return pow(base, power-1) * base; 
+  }
+  int z = pow(base, power/2); 
+  return z*z; 
+}
+
+void scrambleList (int n, long sorted [], long scrambled [])
+{
+  //l is the power we are working on 
+  //start in the starting index odd numbers 
+  //step is the current step we are on
+  int l = 0, start, step; 
+  //place the odd numbers in
+  cout << "Scrambling odds" << endl;
+  for (int p = 1; p < n; )
+  {
+    //cout << "Outer P: " << p << endl;
+    start = pow (2, l) - 1; 
+    step = pow(2, l+1); 
+
+    if( start > (n-1)/2)
+      break;
+
+
+    cout << "START: " << start << "  STEP: " << step << "  P: " << p <<  endl;
+    while (start < (n-1)/2)
+    {
+      //cout << "start: " << start << " p: " << p << endl;
+      scrambled[start] = sorted[p]; 
+      p = p + 2; 
+      start = start + step; 
+    }
+    l++; 
+  }
+  
+  cout << "Scrambling evens" << endl;
+  //placing the even numbers in
+  int num = 0; 
+  for (int i = (n-1)/2; i < n - 1; i++)
+  {
+    scrambled[i] = sorted[num];
+    num = num + 2; 
+  }
+
+  //placing the last number in 
+  scrambled[n-1] = sorted[n-1];
+}
+
+
+////////////////////// END CAITLIN AND DAN CODE /////////////////////////
 
 int main(int argc, char *argv[])
   {
@@ -229,7 +303,11 @@ int main(int argc, char *argv[])
   rlim . rlim_max = 10000;
 */
   setrlimit(RLIMIT_STACK,&rlim);
-  n = 10000;
+  if( argc == 2 )
+    n = atoi(argv[1]);
+  else
+    n = 10000;
+  global_n = n;
   cout << "Running quicksorts with " << n << " numbers" << endl;
   if (rlim . rlim_max == RLIM_INFINITY)
     cout << "Using maximum stack size." << endl;
@@ -259,7 +337,34 @@ int main(int argc, char *argv[])
   check_order(b, n);
   cerr << "left took " << t4 - t3 << " seconds." << endl;
 
-  cout << "Done with quicksort" << endl;
+  // Scramble a sorted list for worst case in quicksort
+  scrambleList (n, b, a);
+  // Copy scrambled list to run on normal quicksort
+  for( i=0; i<n; i++ )
+  {
+    if( PRINTING )
+      cout << a[i] << " ";
+    b[i] = a[i];
+  }
+  cout << endl;
+
+  cout << "Before WORST CASE quicksort_median_3" << endl;
+  t1 = clock_seconds();
+  quick_sort_median_3(a, 0, n - 1);
+  t2 = clock_seconds();
+  cout << "After WORST CASE quicksort_median_3" << endl;
+  check_order(a, n);
+  cerr << "median 3 took " << t2 - t1 << " seconds." << endl;
+
+  cout << "Before quicksort_left" << endl;
+  a[n] = MAXINT;
+  t3 = clock_seconds();
+  quick_sort_left(b, 0, n - 1);
+  t4 = clock_seconds();
+  cout << "After quicksort_left" << endl;
+  check_order(b, n);
+  cerr << "left took " << t4 - t3 << " seconds." << endl;
+
 
   }
 
