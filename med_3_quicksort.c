@@ -10,11 +10,13 @@
 #include <values.h>  // for MAXLONG
 #include <sys/resource.h>  // for setrlimit (stack size)
 #include <stdlib.h>
+#include <fstream>
 using namespace std;
 
-const int  MAX_N =  500000;
+const int  MAX_N =  1000000;
 int global_n; // Didn't want to mess up functions when debugging, 
               // so I added this to use as the list size
+unsigned long long comp_count; // Global counter for key comparisons
 bool PRINTING = false; // Print debugging statements if true.
 
 ////////////////////////////////////////////////////////////////////
@@ -108,19 +110,27 @@ void median_of_3_to_left(long a[], int left, int right)
   a_mid = a[mid];
 
   // check for left value already median
-  if ((a_left >= a_mid) && (a_left <= a_right))
+  if (( (comp_count+=1) && a_left >= a_mid) 
+    && ( (comp_count+=1) && a_left <= a_right)){
+
     return;
-  if ((a_left <= a_mid) && (a_left >= a_right))
+  }
+  if (( (comp_count+=1) && a_left <= a_mid) 
+    && ( (comp_count+=1) && a_left >= a_right)){
+
     return;
+  }
 
   // check for middle value is median
-  if ((a_mid >= a_left) && (a_mid <= a_right))
-    {
+  if (( (comp_count+=1) && a_mid >= a_left) 
+    && ( (comp_count+=1) && a_mid <= a_right)){
+
     swap(a[mid], a[left]);
     return;
     }
-  if ((a_mid <= a_left) && (a_mid >= a_right))
-    {
+  if (( (comp_count+=1) && a_mid <= a_left) 
+    && ( (comp_count+=1) && a_mid >= a_right)){
+
     swap(a[mid], a[left]);
     return;
     }
@@ -141,8 +151,9 @@ void quick_sort_median_3(long a[], int left, int right)
   int  j;
   long pivot;
 
-  if (left < right)
+  if ( (comp_count+=1) && left < right)
     {
+
     i = left;
     j = right + 1;
     median_of_3_to_left(a, left, right);
@@ -152,17 +163,17 @@ void quick_sort_median_3(long a[], int left, int right)
       {
       do
         i++;
-      while(a[i] < pivot);
+      while( (comp_count+=1) && a[i] < pivot);
 
       do
         j--;
-      while(a[j] > pivot);
+      while( (comp_count+=1) && a[j] > pivot);
 
-      if (i < j)
+      if ( (comp_count+=1) && i < j)
         swap(a[i], a[j]);
 
       } // end do
-    while (i <= j);
+    while ( (comp_count+=1) && i <= j);
 
     swap(a[left], a[j]);
     if( PRINTING )
@@ -181,7 +192,7 @@ void quick_sort_left(long a[], int left, int right)
   int  j;
   long pivot;
 
-  if (left < right)
+  if ( (comp_count+=1) && left < right)
     {
     i = left;
     j = right + 1;
@@ -191,13 +202,13 @@ void quick_sort_left(long a[], int left, int right)
       {
       do
         i++;
-      while(a[i] < pivot);
+      while( (comp_count+=1) && a[i] < pivot);
 
       do
         j--;
-      while(a[j] > pivot);
+      while( (comp_count+=1) && a[j] > pivot);
 
-      if (i < j)
+      if ( (comp_count+=1) && i < j)
         swap(a[i], a[j]);
 
       } // end do
@@ -282,8 +293,8 @@ void scrambleList (int n, long sorted [], long scrambled [])
 
 int main(int argc, char *argv[])
   {
-  long      a[MAX_N + 1]; // quicksort needs an extra spot at end
-  long      b[MAX_N + 1]; // copy for sorting again
+  long      *a = (long*)malloc( (MAX_N + 1)*sizeof(long) ); // quicksort needs an extra spot at end
+  long      *b = (long*)malloc( (MAX_N + 1)*sizeof(long) );; // copy for sorting again
   // long      a[100]; // quicksort needs an extra spot at end
   // long      b[100]; // copy for sorting again
   int       i;
@@ -293,6 +304,17 @@ int main(int argc, char *argv[])
   float     t3;
   float     t4;
   rlimit    rlim;
+
+  ofstream in_order_L; // Output data for in order with left pivot
+  ofstream in_order_M; // OUtput data for in order with median
+  ofstream worst_L; // Output data for worst case with left pivot
+  ofstream worst_M; // OUtput data for worst case with median
+
+  in_order_L.open("in_order_l.txt", ofstream::app); // Output data for in order with left pivot
+  in_order_M.open("in_order_m.txt", ofstream::app); // OUtput data for in order with median
+  worst_L.open("worst_l.txt", ofstream::app); // Output data for worst case with left pivot
+  worst_M.open("worst_m.txt", ofstream::app); // OUtput data for worst case with median
+
 
 /*********** Set stack size as large as possible  ***/
   rlim . rlim_cur = RLIM_INFINITY;
@@ -308,6 +330,7 @@ int main(int argc, char *argv[])
   else
     n = 10000;
   global_n = n;
+
   cout << "Running quicksorts with " << n << " numbers" << endl;
   if (rlim . rlim_max == RLIM_INFINITY)
     cout << "Using maximum stack size." << endl;
@@ -320,13 +343,19 @@ int main(int argc, char *argv[])
   a[n] = MAXLONG;
   b[n] = MAXLONG;
 
+
+  comp_count = 1; // Reset comparison counter
+
   cout << "Before quicksort_median_3" << endl;
   t1 = clock_seconds();
   quick_sort_median_3(a, 0, n - 1);
   t2 = clock_seconds();
   cout << "After quicksort_median_3" << endl;
   check_order(a, n);
-  cerr << "median 3 took " << t2 - t1 << " seconds." << endl;
+  in_order_M << n << " " << comp_count << " " << t2-t1 << endl;
+
+
+  comp_count = 1; // Reset comparison counter
 
   cout << "Before quicksort_left" << endl;
   a[n] = MAXINT;
@@ -335,7 +364,7 @@ int main(int argc, char *argv[])
   t4 = clock_seconds();
   cout << "After quicksort_left" << endl;
   check_order(b, n);
-  cerr << "left took " << t4 - t3 << " seconds." << endl;
+  in_order_L << n << " " << comp_count << " " << t4-t3 << endl;
 
   // Scramble a sorted list for worst case in quicksort
   scrambleList (n, b, a);
@@ -348,13 +377,18 @@ int main(int argc, char *argv[])
   }
   cout << endl;
 
+
+  comp_count = 1; // Reset comparison counter
   cout << "Before WORST CASE quicksort_median_3" << endl;
   t1 = clock_seconds();
   quick_sort_median_3(a, 0, n - 1);
   t2 = clock_seconds();
   cout << "After WORST CASE quicksort_median_3" << endl;
   check_order(a, n);
-  cerr << "median 3 took " << t2 - t1 << " seconds." << endl;
+  worst_M << n << " " << comp_count << " " << t2-t1 << endl;
+
+
+  comp_count = 1; // Reset comparison counter
 
   cout << "Before quicksort_left" << endl;
   a[n] = MAXINT;
@@ -363,7 +397,7 @@ int main(int argc, char *argv[])
   t4 = clock_seconds();
   cout << "After quicksort_left" << endl;
   check_order(b, n);
-  cerr << "left took " << t4 - t3 << " seconds." << endl;
+  worst_L << n << " " << comp_count << " " << t4-t3 << endl;
 
 
   }
